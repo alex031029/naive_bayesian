@@ -1,0 +1,320 @@
+\documentclass{ctexart}
+\usepackage{nips07submit_e,times}
+
+% For figures
+\usepackage{graphicx} % more modern
+%\usepackage{epsfig} % less modern
+\usepackage{subfigure}
+
+% For citations
+%\usepackage{natbib}
+
+% For algorithms
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{enumerate}%\begin{enumerate}
+\usepackage{amsfonts}
+\usepackage{amsmath, amsthm, amssymb}
+\usepackage{helvet}
+\usepackage{courier}
+\usepackage{url}
+\newcommand{\bkappa}    {\mbox{\boldmath$\kappa$}}
+\newcommand{\bmu}    {\mbox{\boldmath$\mu$}}
+\newcommand{\btheta} {\mbox{\boldmath$\theta$}}
+\newcommand{\bTheta} {\mbox{\boldmath$\Theta$}}
+\newcommand{\bsigma} {\mbox{\boldmath$\Sigma$}}
+\newcommand{\bxi}    {\mbox{\boldmath$\xi$}}
+\newcommand{\balpha} {\mbox{\boldmath$\alpha$}}
+\newcommand{\bgamma} {\mbox{\boldmath$\gamma$}}
+
+\def\x{\mathbf x}
+\def\y{\mathbf y}
+\def\w{\mathbf w}
+\def\M{\mathbf M}
+\def \w    {\mathbf w}
+\def \zero {\mathbf 0}
+\def \one  {\mathbf I}%one vector
+\def\R     { \mathcal R} %real space
+\def\N     { \mathcal N} %normal distribution
+\def\H     { \mathcal H} %Hilbert space
+\def\X     {\mathcal{X}}
+\def \M    {\mathcal{M}}
+\def\K     {\mathbf K}
+\def \tx {\tilde{x}}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{definition}[theorem]{Definition}
+%\newtheorem{theorem}{Theorem}[section]
+
+% The \icmltitle you define below is probably too long as a header.
+% Therefore, a short form for the running title is supplied here:
+%\icmltitlerunning{}
+\newcommand{\theHalgorithm}{\arabic{algorithm}}
+
+
+
+\begin{document}
+\title{贝叶斯分类器在文本分类中的应用及改进\\
+\large{——人工智能课程期末论文}}
+%A Kernel-Fused Algorithm for Scalable
+%Online
+%Learning\\Scalable Online Learning with Fused Kernels\\
+\makeanontitle
+
+\begin{abstract}
+文本分类（Document Classification或Document Categorization），是数据挖掘（Data Mining）中的重要分支。本文将通过
+有监督的学习（Supervised Learning），基于贝叶斯分类器（Bayesian classifier），通过对其进行研究和改进，从而产生布尔型，词频型，加权词频型三种贝叶斯分类器，对
+一组新闻文档的训练文本数据进行训练，对另外一组测试数据进行分类并测试。
+\end{abstract}
+\section{Introduction}
+\CTEXnoindent 随着网络的发展，人们获得信息的速度以及数量大幅度上升，文本自动分类成为了一个重要的问题。在垃圾邮件鉴别，新闻类别
+甄别，科学文献分类等很多方面都有重要的作用。对于文本分类目前常用的方法有决策树，贝叶斯（Bayes）方法，
+神经网络方法（ANN），K2最近邻法（KNN），遗传算法（GA），支持向量机（SVM）等，其中最常用的前两种方法~\cite{Qin}。
+朴素贝叶斯分类器（naive Bayesian classifier，NBC）作为贝叶斯网分类器的一种，
+是目前公认的一种简单而且有效的概率分类方法。其性能可与决策树、神经网络等算法相媲美，
+在某些领域汇中性能优越~\cite{mining}。\\
+贝叶斯分类器中最著名的是朴素贝叶斯分类器（naive Bayesian classifier)，本文除了实现朴素的贝叶斯分类器以外还将对其
+进行一定的改进，并进行比较。一个文本分类的系统主要由文本的向量模型表示、文本的特征选择以及分类器训练三部分组成。
+其中文本的向量的维度将会很大，训练样本也将很大。这里的训练样本来源于CMU的一份用于朴素贝叶斯文本分类训练用的数据。
+\footnote{http://www-2.cs.cmu.edu/afs/cs/project/theo-11/www/naive-bayes.html}这个地址由模式识别课的池明旻老师
+提供，但是本文绝不是模式识别课的作业。\\
+\section{Bayesian classifier}
+朴素的贝叶斯分类器主要是基于贝叶斯公式实现的，公式的定义为公式~\ref{eqt:bayesian}\\
+\begin{equation}\label{eqt:bayesian}
+P(Y|X)=\frac{P(X|Y)P(Y)}{P(X)};
+\end{equation}
+在文本分类中，一个主要的假设是所有单词之间，假设$C$为类别，共有$k$类，记为$C=\{C_1,C_2,\dots,C_k\}$，$w$为单词，
+则原理图为图~\ref{fig:theorem}。\\
+\begin{figure}
+\centering
+  % Requires \usepackage{graphicx}
+  \includegraphics[width=10cm]{C&Omega.jpg}\\
+  \caption{Schematic diagram for Beyasian classifier}\label{fig:theorem}
+\end{figure}
+假设每个类$C_i$的先验概率为$P(C_i),i=1,2,\dots,k$，在这里我们可以设为每个类$C_i$占样本集总数$N$的比重。假设对于
+一个测试样本$\boldsymbol{x}$，则在类$C_i$的得到它的条件概率概率为$P(\boldsymbol{x}|C_i)$。根据
+贝叶斯公式~\ref{eqt:bayesian}，
+则$\boldsymbol{x}$属于$C_i$的后验概率为公式~\ref{eqt:doc_bayes}\\
+\begin{equation}\label{eqt:doc_bayes}
+P(C_i|\boldsymbol{x})=\frac{P(\boldsymbol{x}|C_i)P(C_i)}{P(\boldsymbol{x})};
+\end{equation}
+由于$P(\boldsymbol{x})$对于所有的类均为一个常量，我们可以将公式~\ref{eqt:doc_bayes}改为公式~\ref{eqt:bayes}\\
+\begin{equation}\label{eqt:bayes}
+P(C_i|\boldsymbol{x})\propto P(\boldsymbol{x}|C_i)P(C_i);
+\end{equation}
+为了防止$P(C_i)$的值为零，影响计算结构，我们利用拉普拉斯估计（Laplace Estimator），定义$P(C_i)$为等式~\ref{eqt:laplace}\\
+\begin{equation}\label{eqt:laplace}
+P(C_i)=\frac{1+|D_c|}{k+|D_c|};
+\end{equation}
+其中$|D_C|$训练集的文本数量，$k$为类的数量。\\
+如果每个$C_i$的训练集的文本数量都相等，那么公式~\ref{eqt:bayes}可以简化为公式~\ref{eqt:simplified_bayes}、、
+\begin{equation}\label{eqt:simplified_bayes}
+P(C_i|\boldsymbol{x})\propto P(\boldsymbol{x}|C_i);
+\end{equation}
+所以对于一个输入$\boldsymbol{x}$，我们通过寻找$argmax\{P(\boldsymbol{x}|C_i)P(C_i)\},i=1,2\dots,k$，
+决定$\boldsymbol{x}$属于$C_i$。\\
+输入$\boldsymbol{x}$，表示这个文档的一些特征词。特征词我们可以认为是除了一些没有意义的连接词、动词、名词，
+如"is","for","I"之外的其他词语。那么有$\boldsymbol{x}=\{w_1,w_2,\dots,w_m\}$，其中$m$为$\boldsymbol{x}$
+的特征词的数量，即$m=|\boldsymbol{x}|$。又因为我们假设了每个特征词之间相互独立，所以我们可以得到
+式子~\ref{eqt:final_condition}。\\
+\begin{equation}\label{eqt:final_condition}
+P(\boldsymbol{x}|C_i)=P((w_1,w_2,\dots,w_m)|C_i)=\prod_{j=1}^{m}P(w_j|C_i);
+\end{equation}
+其中$P(w_j|C_i)$表示某个单词$w_j$在类$C_i$中发生的概率。因此公式~\ref{eqt:doc_bayes}转变为
+公式~\ref{eqt:final_bayes}\\
+\begin{equation}\label{eqt:final_bayes}
+P(C_i|\boldsymbol{x})\propto P(C_i)\prod_{j=1}^{m}P(w_j|C_i);
+\end{equation}
+根据$P(w_j|C_i)$的设置不同，我们就能够获得不同的，我们可以分为一下三种不同的分类器：\\
+\begin{enumerate}[\hspace{0.5cm}1.]
+\item 布尔型：\\
+仅仅考虑某个单词$w_j$在一个文档中是否出现。出现则记为1，否则为0。那么我们则可以定义$P(w_j|C_i)$为
+公式~\ref{eqt:bool}~\cite{Li}。\\
+\begin{equation}\label{eqt:bool}
+P(w_j|C_i)=\frac{1+N(doc(w_j)|C_i)}{2+|D_c|};
+\end{equation}
+这里为了防止数字为零，同样利用了拉普拉斯估计。其中$N(doc(w_j)|C_i)$表示一个特征词$w_j$在$C_i$中出现的总文档
+数。\\
+\item 词频型：\\
+将一个单词$w_j$在文档中出现的频率考虑在内，从而的到公式~\ref{eqt:frequent}。\\
+\begin{equation}\label{eqt:frequent}
+P(w_j|C_i)=\frac{1+F(w_j|C_i)}{|V|+\sum_{k=1}^{|V|}F(w_k|C_i)};
+\end{equation}
+其中，$|V|$表示所有特征词的综合。$F(w_j|C_i)$表示$C_i$类中特征词$w_j$出现的频率总和。
+\item 加权词频型：\\
+对上述的词频型进行修改，得到公式~\ref{eqt:weight}。\\
+\begin{equation}\label{eqt:weight}
+P(w_j|C_i)={(\frac{1+F(w_j|C_i)}{|V|+\sum_{k=1}^{|V|}F(w_k|C_i)})}^{Weight(w_j)};
+\end{equation}
+这里$Weight(w_j)$表示$w_j$的一个权重。如果权重越大，$w_j$在分类器中的作用也越大。相反权重越小，$w_j$的作用
+也就越小。当$Weight(w_j)=0$时，有$P(w_j|C_i)=1$，即$w_j$将在分类中完全不起作用。
+\end{enumerate}
+\section{Implementation}
+对三种分类器将分开讨论。
+\subsection{Boolean type}
+根据上面提到的公式，从而可以训练一个布尔型的朴素贝叶斯分类器，从而可以对一个未知分类的文档进行分类。具体的
+算法为算法~\ref{alg:bool}。
+\begin{algorithm}[tb]
+   \caption{Boolean type}
+   \label{alg:bool}
+   \begin{algorithmic}
+    \STATE  {\bf Inputs:} {\bf x}, a vector contains the words of a test document;
+    \STATE  $K$, number of classes;
+    \STATE  {\bf Local variables:} {\bf useless}, a vector contains the words useless for classify, like "I","a","the";
+    \STATE  {\bf Initialization:} {\bf record}, the type is vector(map(string,int)) defined in stl;
+    \STATE  {\bf record}[i][w] refers to the number of documents containing word $w$ in class $C_i$;
+    \STATE  Each $w$ in {\bf record} is distinct;
+    \STATE  $M$, number of all words;
+    \STATE  $D$, number of all training documents
+    \STATE  {\bf dic}, a vector refer to the dictionary of all words;
+    \STATE  {\bf P}, a vector contain the prior probability for each class;
+    \FOR {$i=0$ to $K$}
+        \STATE Initialize the vector {\bf rate}, make all element in it equal to $1.0$\\
+        \FOR {$j=0$ to $M$}
+            \IF {${\bf dic}[j]$ is included in {\bf useless}}
+                \STATE  {\bf continue};
+            \ENDIF
+            \STATE  $rate[i]*=(1+{\bf record}[i][{\bf dic}[j]])*{\bf P}[i]/(D+2)$;
+        \ENDFOR
+    \ENDFOR
+    \RETURN the maximum of {\bf rate};
+\end{algorithmic}
+\end{algorithm}
+由此我们能够得到该位置文档的分类。\\
+初始化的时间复杂度为$O(N\times v)$，其中$N$为训练集的大小，$v$为每个训练文档平均的单词数量。
+若对$n$个文件进行分类，那么分类所需的时间复杂度为$O(n\times K\times M \times u)$，
+其中$K$的定义为类别的数量，$M$的定义
+为训练集的单词数量。$u$代表查询{\bf useless}数组所需的时间，如果是线性查找的话，$u=|{\bf useless}|$。
+所以总共的时间复杂度为$O(N\times v)+O(n\times K\times M \times u)$。当$n$跟$N$属于基本一个数量级时，因为$v\le M$，所以有
+$O(N\times v)+O(n\times K\times M \times u)=O(n\times K\times M \times u)$。
+\subsection{Frequency type}
+根据上面提到的公式，从而可以训练一个词频型的朴素贝叶斯分类器，从而可以对一个未知分类的文档进行分类。具体的
+算法为算法~\ref{alg:frequency}。
+\begin{algorithm}[tb]
+   \caption{Frequency type}
+   \label{alg:frequency}
+   \begin{algorithmic}
+    \STATE  {\bf Inputs and Local variances:} the same as boolean type classifier
+    \STATE  {\bf Initialization:} {\bf record}[i][w] refers to the time word $w$ has appeared in all documents of class $C_i$;
+    \STATE  The rest initialization are same as boolean type classifer
+    \FOR {$i=0$ to $K$}
+        \STATE Initialize the vector {\bf rate}, make all element in it equal to $1.0$\\
+        \FOR {$j=0$ to $M$}
+            \IF {${\bf dic}[j]$ is included in {\bf useless}}
+                \STATE  {\bf continue};
+            \ENDIF
+            \STATE  define $sum$, the total frequency of all words in class $C_i$;
+            \STATE  $rate[i]*=(1+{\bf record}[i][{\bf dic}[j]])*{\bf P}[i]/(sum+M)$;
+        \ENDFOR
+    \ENDFOR
+    \RETURN the maximum of {\bf rate};
+\end{algorithmic}
+\end{algorithm}
+由此我们能够得到该位置文档的分类。\\
+在保留跟布尔型分类器时间复杂度分析相同的变量名，有初始化的时间复杂度为$O(N\times v)$。
+为了提高效率，我们可以实现计算好每个组$C_i$对应的$sum$值，这个需要$O(K\times M)$ 若对$n$个文件进行分类，那么分类所需的时间复杂度为$O(n\times N\times M \times u)$
+所以总共的时间复杂度为$O(N\times v)+O(K\times M)+O(n\times K\times M \times u)$。当$n$跟$N$属于基本一个数量级时，因为$v\le M$，所以有
+$O(N\times v)+O(K\times M)+O(n\times K\times M \times u)=O(n\times K\times M \times u)$。
+\subsection{Weighted frequency type}
+根据上面提到的公式，从而可以训练一个加权词频型的朴素贝叶斯分类器，从而可以对一个未知分类的文档进行分类。
+其中权重的选择我采用了利用方差。如果一个单词$w$在每个类中出现的频率的方差越大，我则将给予越小的权重。具体的
+算法为算法~\ref{alg:weight}。
+\begin{algorithm}[tb]
+   \caption{Weighted frequency type}
+   \label{alg:weight}
+   \begin{algorithmic}
+    \STATE  {\bf Inputs and Local variables:} the same as frequency type
+    \STATE  {\bf Initialization:} except all the variables in frequency type, a map(string,int) type variable {\bf deviation} is required to record each word's deviation;
+    \FOR {$i=0$ to $K$}
+        \STATE Initialize the vector {\bf rate}, make all element in it equal to $1.0$\\
+        \FOR {$j=0$ to $M$}
+            \IF {${\bf dic}[j]$ is included in {\bf useless}}
+                \STATE  {\bf continue};
+            \ENDIF
+            \STATE  define $sum$, the total frequency of all words in class $C_i$;
+            \STATE  $rate[i]*=Weight(eight((1+{\bf record}[i][{\bf dic}[j]])/(sum+M),{\bf dict}[j])*{\bf P}[i]$;
+        \ENDFOR
+    \ENDFOR
+    \RETURN the maximum of {\bf rate};
+\end{algorithmic}
+\end{algorithm}
+其中Weight()函数为一个加权的函数，权值的大小由方差所决定。定义为等式~\ref{eqn:weight}
+\begin{equation}
+\label{eqn:weight} Weight(x,s) =
+  \begin{cases}
+      x^6   &   s\in{\bf keyword}\\
+      \sqrt{x}         & {\bf deviation}[s]>1000 \\
+      x       & 1000\ge{\bf deviation}[s]>100 \\
+      x^2        & 100\ge{\bf deviation}[s]>10 \\
+      x^3        & 10\ge{\bf deviation}[s]>1\\
+      x^4       &   1\ge{\bf deviation}[s]\\
+  \end{cases}
+\end{equation}
+向量{\bf keyword}是一个可以设定的一些特别关键词。
+如果包含这些词的话可以人为加大其权限。由此我们能够得到该位置文档的分类。\\
+在时间复杂度上，除了为了加权函数Weight()计算方差之外，其他均相同。在保留跟前两个分类器相同的变量下，有
+方差的时间复杂度为$O(K\times M)$，所以总的时间复杂度为：$O(N\times v)+O(K\times M)+O(K\times M)+O(n\times K\times M \times u)=O(n\times K\times M \times u)$。
+\section{Evaluation}
+通过上面的算法，我们可以获得一个对应的贝叶斯文本分类器。训练数据与测试数据均来源于CMU，已经在Introduction中
+说明。训练数据集包括了20个不同分类的新闻报道的文本，每个分类均有100个文本文档。测试数据同样为20个分类，每个分类的文本
+文档同样为100个，测试数据与训练数据的文本文档均不相同。\\
+本人对于对于三种分类器均进行了实现，使用C语言编程，其结果均表示在表格~\ref{table:accurate}。其中第一列表示每个类的名词，第二列到第四列是
+分类的结果跟真实的类完全相同时的正确率。从中我们可以看出，布尔型跟词频型在表现力上基本
+差不多，无论是每个类的准确度，总的准确度以及方差均相差不远。而对于加权词频型，我们可以看到，在某些组，如
+"rec.autos"上有明显的提升，但是在某些类如"sci.med"上准确度反而不及较为朴素的布尔型跟词频型。但总的来说加权
+词频型拥有更好的表现力，相比起来有$8.5\%$左右的提升。更关键的是，方差比起朴素的两种分类器，几乎减少了一半。
+这意味着不会有那个类非常差的表现。布尔型跟词频型表现最差的类别分别只有$35\%$与$34\%$的准确度，而加权词频型
+最差的类别表现也有$49\%$，近乎五成，这对于一个随机猜测仅有$5\%$准确率的分类而言还是可以接受。
+这说明了通过一个简单的加权（利用方差的加权），就能够一定程度的提高准确度，并且有效
+的提升稳定性。通过设计更好的加权函数，肯定能够获得更好的准确度和稳定性。\\
+如果将分类到同一大类也认作是正确的话，那么对应的正确率以及方差则如表格~\ref{table:accurate}第五列
+到第七列中所指出。这里的分到同一大类也就是两个类的成分有交集。比如\emph{comp.graphics}
+跟\emph{comp.sys.ibm.pc.hardware}我们就可以认为是一个大类，比如\emph{alt.atheism}这个大类中仅有自己这一个类别。
+我们可以称其为模糊分类（Fuzzy Classification）。那么我们可以看到比起表格~\ref{table:accurate}中第二列到
+第五列而言除了提高了准确率以外，其他特征，如加权词频算法更为优秀的准确率和更加小的方差的特征依旧可以体现。\\
+\begin{table}
+\centering
+\caption{Accurate rate and variance of each classifier}
+\label{table:accurate}
+\begin{tabular}{|l|r|r|r|r|r|r|}
+\hline
+Class of document &\multicolumn{3}{c|}{Accu-rate for exact classification}&\multicolumn{3}{c|}{Accu-rate for fuzzy classification}\\
+\cline{2-7}
+& Boolean & Frequency & Weighted & Boolean & Frequency & Weighted\\
+\hline
+alt.atheism & 0.51  &   0.62    &   0.83& 0.51  &   0.62    &   0.83\\
+comp.graphics & 0.78    &  0.84 &   0.56& 0.81    &  0.88 &   0.86\\
+comp.os.ms-windows.misc & 0.40  &   0.34    &   0.73 & 0.80  &   0.93    &   0.98\\
+comp.sys.ibm.pc.hardware & 0.49 &   0.49    &   0.71& 0.71 &   0.95    &   0.95\\
+comp.sys.mac.hardware & 0.66    &   0.66    &   0.85& 0.72    &   0.91    &   0.91\\
+comp.windows.x & 0.69 & 0.50    &   0.49 & 0.85 & 0.88    &   0.90\\
+misc.forsale & 0.35 &   0.34    &   0.55& 0.47 &   0.41    &   0.57\\
+rec.autos & 0.42 &0.54  &   0.86& 0.45 &0.59  &   0.91\\
+rec.motorcycles  & 0.64 &   0.69    &   0.86& 0.65 &   0.71    &   0.90\\
+rec.sport.baseball  &   0.85    &   0.91    &   0.96 &   0.85    &   0.92    &   0.99\\
+rec.sport.hockey    &   0.92    &   0.89    &   0.83    &   0.93    &   0.93    &   0.95\\
+sci.crypt   &   0.91    &   0.89    &   0.93   &   0.92    &   0.90    &   0.93\\
+sci.electronics &   0.66    &   0.76    &   0.68 &   0.80    &   0.80    &   0.71\\
+sci.med &   0.92    &   0.85    &   0.71 &   0.92    &   0.89    &   0.84\\
+sci.space   &   0.89    &   0.89    &   0.89  &   0.92    &   0.92    &   0.92\\
+soc.religion.christian  &   1.00    &   1.00    &   0.96  &   1.00    &   1.00    &   0.97\\
+talk.politics.guns  &   0.87    &   0.85    &   0.96  &   0.98    &   0.98    &   0.98\\
+talk.politics.mideast   &   0.96    &   0.92    &   0.94  &   0.98    &   0.98    &   0.98\\
+talk.politics.misc  &   0.79    &   0.81    &   0.64  &   0.92    &   0.93    &   0.94\\
+talk.religion.misc  &   0.57    &   0.53    &   0.56 &   0.90    &   0.85    &   0.79\\
+\hline
+total   &   0.714   &   0.716   &   0.775   &   0.8050   &   0.8390   &   0.8905\\
+\hline
+variance   & 0.041657    &   0.040625    &   0.023963   & 0.028668    &   0.022452    &   0.010826\\
+\hline
+\end{tabular}
+\end{table}
+\section{Conclusion}
+从本文中我们讨论了贝叶斯分类器的原理及其实现。对布尔型，词频型，加权词频型都进行了测试。这里可以看到词频型拥有
+略好于布尔型的分类效果，而加权词频型拥有比起两者更加优秀的分类效果。而加权词频型的加权函数可以另外设计，本文中
+采用了相对快速的计算词频方差的方差来设计。在未来的工作中，可以设计更加优秀，快速，有效的加权算法从而获得一个
+更加优秀的分类器。
+\bibliography{online}
+\bibliographystyle{IEEEtran}
+
+\end{document}
